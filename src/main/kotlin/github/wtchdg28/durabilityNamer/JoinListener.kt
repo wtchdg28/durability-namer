@@ -27,10 +27,10 @@ class JoinListener : Listener {
 
         if (meta is Damageable && item.type.maxDurability > 0) {
 
-            // 1. Get the base name (Translation or Anvil Name)
+            // 1. Get the base name
             val baseComponent = if (meta.hasDisplayName()) {
-                // Get current display name and remove children (previous tags)
-                // This keeps the root (Translation-Key or Anvil-Text) intact!
+                // Get current display name and remove children
+                // This keeps the root intact!
                 meta.displayName()!!.children(emptyList())
             } else {
                 // No custom name? Use the translation key (Client-side translation)
@@ -53,8 +53,6 @@ class JoinListener : Listener {
                 .decoration(TextDecoration.ITALIC, false)
 
             // 4. Build final name
-            // We append the tag directly to the base component (root)
-            // We also force italic to false to prevent the slanted vanilla look
             val finalName = baseComponent
                 .decoration(TextDecoration.ITALIC, false)
                 .append(tag)
