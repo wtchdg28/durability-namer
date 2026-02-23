@@ -1,9 +1,8 @@
 ﻿package github.wtchdg28.durabilityNamer
 
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
-import net.kyori.adventure.text.minimessage.MiniMessage
-import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
 import org.bukkit.event.EventHandler
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerItemDamageEvent
@@ -12,12 +11,6 @@ import org.bukkit.inventory.ItemStack
 import org.bukkit.inventory.meta.Damageable
 
 class JoinListener : Listener {
-
-    private val mm = MiniMessage.miniMessage()
-    private val plainSerializer = PlainTextComponentSerializer.plainText()
-
-    // Pattern to catch the durability tag at the end
-    private val durabilityPattern = Regex("""\s*[\(\[].*?\d+/\d+.*?[\)\]]$""")
 
     @EventHandler
     fun onPlayerJoin(event: PlayerJoinEvent) {
@@ -33,36 +26,38 @@ class JoinListener : Listener {
         val meta = item.itemMeta ?: return
 
         if (meta is Damageable && item.type.maxDurability > 0) {
-            // 1. Get current display name component
-            val currentNameComponent = item.displayName()
 
-            // 2. Serialize and clean it
-            val rawName = plainSerializer.serialize(currentNameComponent)
-            var cleanName = rawName.replace(durabilityPattern, "")
-                .replace("[", "").replace("]", "")
-                .trim()
-
-            // FALLBACK: If the name became empty, use the localized material name
-            if (cleanName.isEmpty()) {
-                // This gets the readable name like "Diamond Pickaxe" from the material
-                cleanName = item.type.name.replace("_", " ").lowercase()
-                    .split(" ").joinToString(" ") { it.replaceFirstChar { char -> char.uppercase() } }
+            // 1. Get the base name (Translation or Anvil Name)
+            val baseComponent = if (meta.hasDisplayName()) {
+                // Get current display name and remove children (previous tags)
+                // This keeps the root (Translation-Key or Anvil-Text) intact!
+                meta.displayName()!!.children(emptyList())
+            } else {
+                // No custom name? Use the translation key (Client-side translation)
+                Component.translatable(item.type.translationKey())
             }
 
+            // 2. Calculate values
             val max = item.type.maxDurability.toInt()
             val current = max - meta.damage
 
             val color = when {
-                current < max * 0.1 -> "<red>"
-                current < max * 0.5 -> "<yellow>"
-                else -> "<gray>"
+                current < max * 0.1 -> NamedTextColor.RED
+                current < max * 0.5 -> NamedTextColor.YELLOW
+                else -> NamedTextColor.GRAY
             }
 
-            // 3. Build the final name
-            // <reset> ensures no weird formatting leaks
-            // <italic:false> stops the annoying slant
-            val finalName = mm.deserialize("<reset><white><italic:false>$cleanName</italic:false></white> $color($current/$max)")
+            // 3. Create the tag as a child component
+            val tag = Component.text(" ($current/$max)")
+                .color(color)
                 .decoration(TextDecoration.ITALIC, false)
+
+            // 4. Build final name
+            // We append the tag directly to the base component (root)
+            // We also force italic to false to prevent the slanted vanilla look
+            val finalName = baseComponent
+                .decoration(TextDecoration.ITALIC, false)
+                .append(tag)
 
             meta.displayName(finalName)
             item.itemMeta = meta
