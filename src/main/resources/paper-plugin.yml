@@ -1,0 +1,4 @@
+name: durability-namer
+version: '1.0-SNAPSHOT'
+main: github.wtchdg28.durabilityNamer.DurabilityNamer
+api-version: '1.21'
